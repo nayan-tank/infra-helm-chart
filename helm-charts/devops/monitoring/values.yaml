@@ -1,0 +1,25 @@
+orgID: "upswing"
+NAMESPACE: "monitoring"
+INFRASTRUCTURE: "gcp"
+CONFIG:
+  TZ: "Asia/Kolkata"
+
+MONITOR:
+  BASE_URL: monitor.service.upswing.global
+
+SERVICES:
+  grafana:
+    enable: "true"
+    ingress: /grafana/*
+    ingressType: http
+    serviceName: grafana-service
+    port: 3000
+
+  prometheus:
+    enable: "true"
+    ingress: /prometheus/*
+    ingressType: http
+    serviceName: prometheus-service
+    port: 9090
+
+MONGO_STORAGE: 10Gi

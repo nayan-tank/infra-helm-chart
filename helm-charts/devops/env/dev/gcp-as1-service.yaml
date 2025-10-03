@@ -1,0 +1,91 @@
+INFRASTRUCTURE: gcp
+
+EXTERNALDNS:
+  install: false
+
+INGRESS:
+  install: false
+
+CERT_MANAGER:
+  install: true
+
+VELERO:
+  install: false
+
+POCKETBASE:
+  install: false
+
+MONGODB:
+  install: false
+  Namespace: store
+  baseURL: "a.b.example.com"
+  microserviceConnectionURL:
+    - "mongodb+srv://devAdmin:**********@*********.mongodb.net" # Atlas dev
+#    - "mongo-db-0.store.a.b.example.com:27017"
+#    - "mongo-db-1.store.a.b.example.com:27017"
+#    - "mongo-db-2.store.a.b.example.com:27017"
+
+RABBITMQ:
+  install: false
+
+ENVOY:
+  install: true
+  url: "service.a.dg.example.com"
+
+MICROSERVICE:
+  install: true
+  Namespace: backend
+  httpURL: "api.a.b.example.com"
+  grpcURL: "grpc.a.b.example.com"
+
+  CONFIG:
+    PROJECT: "upswing-global"
+    CORS: "capacitor://localhost,ionic://localhost,http://localhost,http://localhost:4200,http://localhost:8100,https://ui.example.com, https://ai.example.com"
+    TZ: "Asia/Kolkata"
+    GCP_STRING: ''
+
+  SERVICES:
+    app:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    appgrpc:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    admin:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    communication:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    cms:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    housekeeping:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    housekeeping_api:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    energy_management:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always
+
+    job_scheduler:
+      enable: "true"
+      appVersion: "dev"
+      imagePullPolicy: Always

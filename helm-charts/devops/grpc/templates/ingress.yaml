@@ -1,0 +1,201 @@
+# envoy ingress
+{{- if .Values.ENVOY.install }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grpc-ingress
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  tls:
+    - hosts:
+      - {{ .Values.ENVOY.url }}
+      secretName: backend-cert-envoy
+  ingressClassName: nginx-external
+  rules:
+    - host: {{ .Values.ENVOY.url }}
+      http:
+        paths:
+          - path: "/grpc(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: envoy
+                port:
+                  number: 8080
+          - path: "/admin(/|$)(.*)"
+            pathType: Prefix
+            backend:
+              service:
+                name: envoy-admin
+                port:
+                  number: 9901
+{{- end }}
+#---
+#{{- if or (eq .Values.INFRASTRUCTURE "aws") (eq .Values.INFRASTRUCTURE "gcp") }}
+#{{- $hasValidPaths := false }}
+#{{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+#{{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "grpc") }}
+#{{- $hasValidPaths = true }}
+#{{- end }}
+#{{- end }}
+#
+#{{- if $hasValidPaths }}
+#apiVersion: networking.k8s.io/v1
+#kind: Ingress
+#metadata:
+#  name: grpc-direct-ingress
+#  namespace: {{ .Release.Namespace | replace "_" "-" }}
+#  annotations:
+#    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+#    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+#    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+#    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"  # Enable GRPC protocol
+##    nginx.ingress.kubernetes.io/use-regex: "true"  # Enable regex support
+##    nginx.ingress.kubernetes.io/rewrite-target: "/$2"  # Rewrite using regex capture group
+#    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+#spec:
+#  tls:
+#    - hosts:
+#      - {{ .Values.MICROSERVICE.grpcURL }}
+#      secretName: backend-cert-grpc
+#  ingressClassName: nginx-external
+#  rules:
+#    - host: {{ .Values.MICROSERVICE.grpcURL }}
+#      http:
+#        paths:
+#          - path: /
+#            pathType: ImplementationSpecific
+#            backend:
+#              service:
+#                name: admin
+#                port:
+#                  number: 8080
+##      http:
+##        paths:
+##        {{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+##        {{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "grpc") }}
+##        - path: {{ $v.ingress }}(/|$)(.*)  # Regex path to capture and rewrite
+##          pathType: Prefix
+##          backend:
+##            service:
+##              name: {{ $v.appName | replace "_" "-" }}
+##              port:
+##                number: 8080  # The gRPC port your server listens on
+##        {{- end }}
+##        {{- end }}
+#{{- end }}
+#{{- end }}
+---
+# ingress for aws and gcp deployment with nginx-ingress
+{{- if or (eq .Values.INFRASTRUCTURE "aws") (eq .Values.INFRASTRUCTURE "gcp") }}
+{{- $hasValidPaths := false }}
+{{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+{{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "http") }}
+{{- $hasValidPaths = true }}
+{{- end }}
+{{- end }}
+
+{{- if $hasValidPaths }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloud-ingress
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  tls:
+    - hosts:
+      - {{ .Values.MICROSERVICE.httpURL }}
+      secretName: backend-cert-api
+  ingressClassName: nginx-external
+  rules:
+    - host: {{ .Values.MICROSERVICE.httpURL }}
+      http:
+        paths:
+        {{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+        {{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "http") }}
+        - path: {{ $v.ingress }}
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: {{ $v.appName | replace "_" "-" }}
+              port:
+                number: 8080
+        {{- end }}
+        {{- end }}
+{{- end }}
+{{- end }}
+---
+# ingress for local vm deployment
+{{- if eq .Values.INFRASTRUCTURE "vm" }}
+{{- $hasValidPaths := false }}
+{{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+{{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "http") }}
+{{- $hasValidPaths = true }}
+{{- end }}
+{{- end }}
+
+{{- if $hasValidPaths }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vm-ingress
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx-external
+  rules:
+    {{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+    {{- if and (eq $v.enable "true") ($v.ingress) (eq $v.ingressType "http") }}
+    - http:
+        paths:
+        - path: {{ $v.ingress }}
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: {{ $v.appName | replace "_" "-" }}
+              port:
+                number: 8080
+    {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+---
+# ingress for local vm ws deployment
+{{- if eq .Values.INFRASTRUCTURE "vm" }}
+{{- if eq .Values.MICROSERVICE.SERVICES.grms_messerchmitt.enable "true" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vm-ws-ingress
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.org/proxy-read-timeout: "3600"
+    nginx.org/proxy-send-timeout: "3600"
+    nginx.org/websocket-services: {{ .Values.MICROSERVICE.SERVICES.grms_messerchmitt.appName | replace "_" "-" }}
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.MICROSERVICE.SERVICES.grms_messerchmitt.appName | replace "_" "-" }}
+                port:
+                  number: 8080
+{{- end }}
+{{- end }}

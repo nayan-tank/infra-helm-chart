@@ -1,0 +1,206 @@
+INFRASTRUCTURE: "gcp" # VM / AWS / gcp
+deploymentTime: ""
+
+CERT_MANAGER:
+  install: false
+
+RABBITMQ:
+  microserviceConnectionURL: "localhost"
+
+MONGODB:
+  baseURL: "a.example.com"
+  microserviceConnectionURL:
+    - "IP-1:27017"
+    - "IP-2:27017"
+    - "IP-3:27017"
+  #  microserviceConnectionURL: "mongo-db-0.mongodb-svc.ops-dev:27017"
+  MONGO_USERNAME: "admin"
+  MONGO_PASSWORD: "x24n3hiwie9we8we"
+  MONGO_ROOT_USERNAME: "clusterAdmin"
+  MONGO_ROOT_PASSWORD: "js273hjhdwhwehw"
+
+  ssl_path: "/ssl/custom"
+  ssl_ca_pem: ""
+  ssl_member_pem: ""
+  ssl_client_pem: ""
+
+ENVOY:
+  install: true
+  listener_port: 8080
+  admin_port: 9901
+  url: "envoy.service.example.com"
+
+MICROSERVICE:
+  httpURL: "api.service.example.com"
+  grpcURL: "grpc.service.example.com"
+
+  CONFIG:
+    PROJECT: "default"
+    CORS: "http://localhost:4200,http://localhost:8100,https://h.example.com,https://h.example.com, https://b.example.com"
+    TZ: "Asia/Kolkata"
+    GCP_STRING: ''
+    ENCRYPTION_SECRET: ""
+    SMTP:
+      email: "noreply@example.com"
+      password: "abcd1234efgh"
+      host: "smtp.gmail.com"
+      port: "465"
+
+  SERVICES:
+    app:
+      enable: "false"
+      appName: "app"
+      appVersion: "latest"
+      ingress: "/app"
+      ingressType: "http"
+      port: "8058"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    appgrpc:
+      enable: "false"
+      appName: "appgrpc"
+      appVersion: "latest"
+      ingress: "/appgrpc"
+      ingressType: "grpc"
+      port: "8062"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    admin:
+      enable: "false"
+      appName: "admin"
+      appVersion: "latest"
+      ingress: "/admin"
+      ingressType: "grpc"
+      port: "8051"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+    
+    cms:
+      enable: "false"
+      appName: "cms"
+      appVersion: "latest"
+      ingress: "/cms"
+      ingressType: "grpc"
+      port: "8053"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    housekeeping:
+      enable: "false"
+      appName: "housekeeping"
+      appVersion: "latest"
+      ingress: "/housekeeping"
+      ingressType: "grpc"
+      port: "8056"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    communication:
+      enable: "false"
+      appName: "communication"
+      appVersion: "latest"
+      ingress: "/communication"
+      ingressType: "grpc"
+      port: "8055"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    housekeeping_api:
+      enable: "false"
+      appName: "housekeeping_api"
+      appVersion: "latest"
+      ingress: "/housekeeping"
+      ingressType: "http"
+      port: "8057"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+      imagePullPolicy: IfNotPresent
+
+    reports:
+      enable: "false"
+      appName: "reports"
+      appVersion: "latest"
+      ingress: "/reports"
+      ingressType: "http"
+      port: "8059"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+
+    energy_management:
+      enable: "false"
+      appName: "energy_management"
+      appVersion: "latest"
+      ingress: "/energy"
+      ingressType: "http"
+      port: "8061"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+
+    job_scheduler:
+      enable: "false"
+      appName: "job_scheduler"
+      appVersion: "latest"
+      ingress: "/job_scheduler"
+      ingressType: "http"
+      port: "8063"
+      replicas: 1
+      cpu: "0.25"
+      memory: "1Gi"
+
+  JOBS:
+    pms-ows-reservation-sync:
+      enable: "false"
+      appType: "curl"
+      appName: "pms-report-sync"
+      appVersion: "latest"
+      schedule: "1/15 * * * *"
+      curlCMD: "'localhost:8080'"
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 5
+
+    job-1:
+      enable: "false"
+      appType: "curl"
+      appName: "pms-housekeeping-status-sync"
+      appVersion: "latest"
+      schedule: "1/3 * * * *"
+      curlCMD: "'localhost:8080'"
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 4
+
+    job-2:
+      enable: "false"
+      appType: "curl"
+      appName: "pms-ows-reservation-clearing"
+      appVersion: "latest"
+      schedule: "0 0 * * *"
+      curlCMD: "'localhost:8080'"
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 5
+
+    job-3:
+      enable: "false"
+      appType: "curl"
+      appName: "reports-hourly-trigger"
+      appVersion: "latest"
+      schedule: "0 * * * *"
+      curlCMD: "'localhost:8080'"
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 5

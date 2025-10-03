@@ -1,0 +1,37 @@
+{{- range $index, $url := .Values.MONGODB.microserviceConnectionURL }}
+  {{- $urlParts := split ":" $url }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mongo-db
+  name: mongo-db-{{ $index }}
+  namespace: {{ $.Release.Namespace | replace "_" "-" }}
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: {{ $urlParts._0 }} # to get first part of the url and ignore the port
+spec:
+  type: LoadBalancer
+  ports:
+    - port: {{ $.Values.MONGODB.MONGO_PORT }}
+      protocol: TCP
+      targetPort: {{ $.Values.MONGODB.MONGO_PORT }}
+  selector:
+    statefulset.kubernetes.io/pod-name: mongo-db-{{ $index }}
+{{- end }}
+---
+# this headless service is needed in order for dns such as mongo-db-1.mongodb-svc.core-ops.svc.cluster.local to work.
+# without this service 1 pod will not be able to access another pod within same namespace
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-svc  # Match the serviceName in the StatefulSet
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  clusterIP: None
+  selector:
+    app: mongo-db
+  ports:
+    - name: mongo
+      port: {{ .Values.MONGODB.MONGO_PORT }}
+      targetPort: {{ .Values.MONGODB.MONGO_PORT }}

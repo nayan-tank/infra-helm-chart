@@ -1,0 +1,4 @@
+INFRASTRUCTURE: "{{ .Values.INFRASTRUCTURE }}"
+
+RABBITMQ:
+{{- toYaml .Values.RABBITMQ | nindent 2 }}

@@ -1,0 +1,11 @@
+global:
+  leaderElection:
+    namespace: "cert-manager"
+crds:
+  enabled: true
+resources:
+  limits:
+    memory: 50Mi
+  requests:
+    memory: 50Mi
+    cpu: 10m

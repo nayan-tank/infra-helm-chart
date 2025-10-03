@@ -1,0 +1,9 @@
+=======================================================
+==> Namespace      : {{ .Release.Namespace | replace "_" "-"}}
+==> INFRASTRUCTURE : {{ .Values.INFRASTRUCTURE | replace "_" "-"}}
+==> Storage        : {{ .Values.MONGODB.MONGO_STORAGE }}
+==> Replicas       : {{ .Values.MONGODB.MONGO_REPLICA }}
+==> Microservice   : {{ .Values.MONGODB.microserviceConnectionURL }}
+==> Port           : {{ .Values.MONGODB.MONGO_PORT }}
+==> SSL            : {{ .Values.MONGODB.ssl_path }}
+=======================================================

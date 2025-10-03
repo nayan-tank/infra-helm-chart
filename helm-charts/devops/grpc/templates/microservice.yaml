@@ -1,0 +1,83 @@
+{{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+{{ if eq $v.enable "true" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $v.appName | replace "_" "-" }}
+  namespace: {{ $.Release.Namespace | replace "_" "-"}}
+spec:
+  selector:
+    app: {{ $v.appName | replace "_" "-" }}
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - port: 8080
+      targetPort: {{ $v.port }}
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $v.appName | replace "_" "-"}}
+  namespace: {{ $.Release.Namespace | replace "_" "-"}}
+  labels:
+    app: {{ $v.appName | replace "_" "-" }}
+spec:
+  replicas: {{ $v.replicas }}
+  selector:
+    matchLabels:
+      app: {{ $v.appName | replace "_" "-" }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ $v.appName | replace "_" "-" }}
+      annotations:
+        deploymentTime: "{{ $.Values.deploymentTime }}"
+    spec:
+      containers:
+        - name: {{ $v.appName | replace "_" "-" }}
+          image: "ghcr.io/*****************/******/{{ $v.appName | replace "-" "_"}}_image:{{ $v.appVersion }}"
+          imagePullPolicy: {{ $v.imagePullPolicy }}
+          ports:
+            - containerPort: {{ $v.port }}
+          envFrom:
+            - configMapRef:
+                name: configmap
+            - secretRef:
+                name: secret
+#          livenessProbe:
+#            httpGet:
+#              path: /  # Adjust this to your application's health check endpoint
+#              port: {{ $v.port }}
+#            initialDelaySeconds: 10
+#            periodSeconds: 300
+#          readinessProbe:
+#            httpGet:
+#              path: /  # Adjust this to your application's health check endpoint
+#              port: {{ $v.port }}
+#            initialDelaySeconds: 10
+#            periodSeconds: 300
+          resources:
+            requests:
+              memory: {{ $v.memory }}
+              cpu: {{ $v.cpu }}
+            limits:
+              memory: "2Gi"
+              cpu: "0.5"
+          volumeMounts:
+            - name: backend-mongo-ssl
+              mountPath: {{ $.Values.MONGODB.ssl_path }}
+              readOnly: true
+      volumes:
+        - name: backend-mongo-ssl
+          secret:
+            secretName: backend-mongo-ssl
+      imagePullSecrets:
+        - name: githubkubernetes
+{{ end }}
+{{- end }}

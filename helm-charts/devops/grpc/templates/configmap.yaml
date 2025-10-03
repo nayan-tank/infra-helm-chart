@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+data:
+  PROJECT: {{ .Values.MICROSERVICE.CONFIG.PROJECT | quote}}
+  CORS: {{ .Values.MICROSERVICE.CONFIG.CORS }}
+  SERVICES: {{.Values.MICROSERVICE.SERVICES | toJson | quote }}
+  TZ: {{ .Values.MICROSERVICE.CONFIG.TZ | quote}}
+

@@ -1,0 +1,139 @@
+environments:
+  mini-core:
+    values:
+      - ./env/dev/local-core.yaml
+
+  # GCP Development
+  dev-gcp-as1-core:
+    values:
+      - ./env/dev/gcp-as1-core.yaml
+  dev-gcp-as1-service:
+    values:
+      - ./env/dev/gcp-as1-core.yaml
+      - ./env/dev/gcp-as1-service.yaml
+
+  # On Prem Development
+  onprem-mac:
+    values:
+      - ./env/dev/gcp-as1-core.yaml
+      - ./env/onprem/mac.yaml
+
+  # AWS Production
+  prod-aws-me-core:
+    values:
+      - ./env/prod/aws-me-core.yaml
+
+  # GCP Production
+  prod-gcp-as1-core:
+    values:
+      - ./env/prod/gcp-as1-core.yaml
+  prod-gcp-as1-me-service:
+    values:
+      - ./env/prod/gcp-as1-core.yaml
+      - ./env/prod/gcp-as1-me-service.yaml
+---
+repositories:
+
+  {{- if .Values.INGRESS.install | default false }}
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  {{- end }}
+  {{- if .Values.EXTERNALDNS.install | default false }}
+  - name: external-dns
+    url: https://kubernetes-sigs.github.io/external-dns
+  {{- end }}
+  {{- if .Values.CERT_MANAGER.install | default false }}
+  - name: jetstack
+    url: https://charts.jetstack.io
+  {{- end }}
+  {{- if .Values.POCKETBASE.install | default false }}
+  - name: techwolf12
+    url: https://helm.techwolf12.nl
+  {{- end }}
+  - name: devops
+    url: ghcr.io/***********/devops
+    oci: true
+
+releases:
+
+  {{- if .Values.INGRESS.install | default false }}
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    chart: ingress-nginx/ingress-nginx
+    version: 4.11.2
+    installed: {{ .Values.INGRESS.install | default false }}
+    values:
+      - ./ingress/values.yaml.gotmpl
+  {{- end }}
+
+  {{- if .Values.EXTERNALDNS.install | default false }}
+  - name: external-dns
+    namespace: external-dns
+    chart: external-dns/external-dns
+    installed: {{ .Values.EXTERNALDNS.install | default false }}
+    values:
+      - ./external-dns/values.yaml.gotmpl
+  {{- end }}
+
+  {{- if .Values.CERT_MANAGER.install | default false }}
+  - name: cert-manager
+    namespace: cert-manager
+    chart: jetstack/cert-manager
+    version: v1.16.2
+    installed: {{ .Values.CERT_MANAGER.install | default false }}
+    values:
+      - ./cert-manager/values.yaml
+  {{- end }}
+
+  {{- if .Values.MONGODB.install | default false }}
+  - name: mongodb
+    namespace: {{ .Values.MONGODB.Namespace }}
+    chart: ./mongodb
+    installed: {{ .Values.MONGODB.install | default false }}
+    values:
+      - ./mongodb/values.yaml.gotmpl
+      - ./mongodb/cert/{{`{{ .Values.MONGODB.Namespace }}`}}-{{`{{ .Values.MONGODB.baseURL | replace "." "-" }}`}}/certificates.yaml
+  {{- end }}
+
+  {{- if .Values.RABBITMQ.install | default false }}
+  - name: rabbitmq
+    namespace: {{ .Values.RABBITMQ.Namespace }}
+    chart: ./rabbitmq
+    installed: {{ .Values.RABBITMQ.install | default false }}
+    values:
+      - ./rabbitmq/values.yaml.gotmpl
+  {{- end }}
+
+  {{- if .Values.RABBITMQ_MULTINODE.install | default false }}
+  - name: rabbitmq-multinode
+    namespace: {{ .Values.RABBITMQ_MULTINODE.Namespace }}
+    chart: ./rabbitmq-multinode
+    installed: {{ .Values.RABBITMQ_MULTINODE.install | default false }}
+    values:
+      - ./rabbitmq-multinode/values.yaml.gotmpl
+  {{- end }}
+
+  {{- if .Values.MICROSERVICE.install | default false }}
+  - name: grpc
+    namespace: {{ .Values.MICROSERVICE.Namespace }}
+    chart: ./grpc
+    installed: {{ .Values.MICROSERVICE.install | default false }}
+    values:
+      - ./grpc/values.yaml.gotmpl
+      - ./mongodb/cert/{{`{{ .Values.MONGODB.Namespace }}`}}-{{`{{ .Values.MONGODB.baseURL | replace "." "-" }}`}}/certificates.yaml
+      - deploymentTime: '{{ now | date "2006-01-02T15:04:05" }}'
+    {{- if .Values.CERT_MANAGER.install | default false }}
+    needs:
+      - cert-manager/cert-manager
+    {{- end }}
+  {{- end }}
+
+   {{- if .Values.POCKETBASE.install | default false }}
+  - name: pocketbase
+    namespace: {{ .Values.POCKETBASE.Namespace }}
+    chart: ./pocketbase
+    version: 0.27.0
+    installed: {{ .Values.POCKETBASE.install | default false }}
+    values:
+      - ./pocketbase/values.yaml
+  {{- end }}

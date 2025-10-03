@@ -1,0 +1,6 @@
+RabbitMQ Deployment
+Infrastructure : {{ .Values.INFRASTRUCTURE }}
+Management Url: http://{{ .Values.RABBITMQ.microserviceConnectionURL }}:15672
+amqp amqpURL: http://{{ .Values.RABBITMQ.microserviceConnectionURL }}:5672
+Websocket Relay Url: https://{{ .Values.RABBITMQ.relayURL }}
+Microservice Connection Url: https://{{ .Values.RABBITMQ.microserviceConnectionURL }}

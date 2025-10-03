@@ -1,0 +1,28 @@
+{{ if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "pocketbase-helm.fullname" . }}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/rewrite-target: /_
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.ingress.host }}
+spec:
+  ingressClassName: nginx-external
+  rules:
+    - host: {{ required "When the ingress is enabled, a valid dns is required" .Values.ingress.host }}
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: {{ include "pocketbase-helm.fullname" . }}
+                port:
+                  number: 8090
+  tls:
+    - hosts:
+        - {{ required "When the ingress is enabled, a valid dns is required" .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tlsSecret }}
+{{ end }} 

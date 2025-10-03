@@ -1,0 +1,41 @@
+{{- if or (eq .Values.INFRASTRUCTURE "aws") (eq .Values.INFRASTRUCTURE "gcp") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Namespace | replace "_" "-" }}-cert-envoy
+spec:
+  secretName: backend-cert-envoy
+  dnsNames:
+    - {{ .Values.ENVOY.url }}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+{{- end }}
+---
+{{- if or (eq .Values.INFRASTRUCTURE "aws") (eq .Values.INFRASTRUCTURE "gcp") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Namespace | replace "_" "-" }}-cert-api
+spec:
+  secretName: backend-cert-api
+  dnsNames:
+    - {{ .Values.MICROSERVICE.httpURL }}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+{{- end }}
+---
+{{- if or (eq .Values.INFRASTRUCTURE "aws") (eq .Values.INFRASTRUCTURE "gcp") }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Namespace | replace "_" "-" }}-cert-grpc
+spec:
+  secretName: backend-cert-grpc
+  dnsNames:
+    - {{ .Values.MICROSERVICE.grpcURL }}
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+{{- end }}

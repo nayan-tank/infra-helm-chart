@@ -1,0 +1,38 @@
+INFRASTRUCTURE: vm
+
+EXTERNALDNS:
+  install: false
+
+INGRESS:
+  install: true
+  annotations:
+
+CERT_MANAGER:
+  install: false
+
+MONGODB:
+  install: false
+  Namespace: store
+  microserviceConnectionURL:
+    - "mongo-db-0.store.dev.example.com:27017"
+    - "mongo-db-1.store.dev.example.com:27017"
+    - "mongo-db-2.store.dev.example.com:27017"
+
+RABBITMQ:
+  install: false
+
+ENVOY:
+  enable: false
+  url: "service.dev.example.com"
+
+MICROSERVICE:
+  install: true
+  Namespace: backend
+  httpURL: "localhost"
+
+  SERVICES:
+    grms_messerchmitt:
+      enable: "true"
+      appVersion: "24.12.23.197"
+      hotelGroups: [{"orgId": "test-3729832732sdw383", "hotelId": ["test-29228332e358acb08"]}]
+      CONNECTING_ROOMS: "{}"

@@ -1,0 +1,166 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      serviceAccountName: rabbitmq
+      initContainers:
+      - name: config
+        image: busybox
+        command: ['/bin/sh', '-c', 'cp /tmp/config/rabbitmq.conf /config/rabbitmq.conf && ls -l /config/ && cp /tmp/config/enabled_plugins /etc/rabbitmq/enabled_plugins']
+        volumeMounts:
+        - name: config
+          mountPath: /tmp/config/
+          readOnly: false
+        - name: config-file
+          mountPath: /config/
+        - name: plugins-file
+          mountPath: /etc/rabbitmq/
+      containers:
+      - name: rabbitmq
+        image: {{ .Values.RABBITMQ.imageVersion }}
+        ports:
+        - containerPort: 4369
+          name: discovery
+        - containerPort: 5672
+          name: amqp
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.25"
+          limits:
+            memory: "2Gi"
+            cpu: "0.5"
+        env:
+        - name: RABBIT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: RABBIT_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(RABBIT_POD_NAME).rabbitmq.$(RABBIT_POD_NAMESPACE).svc.cluster.local
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_CONFIG_FILE
+          value: "/config/rabbitmq"
+        - name: K8S_HOSTNAME_SUFFIX
+          value: .rabbitmq.$(RABBIT_POD_NAMESPACE).svc.cluster.local
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/rabbitmq
+          readOnly: false
+        - name: config-file
+          mountPath: /config/
+        - name: plugins-file
+          mountPath: /etc/rabbitmq/
+      - name: rabbitmq-relay
+        image: cloudamqp/websocket-tcp-relay:v1.0.6
+        ports:
+          - containerPort: 15670
+            name: websocket
+        args:
+          - "--upstream"
+          - {{ .Values.RABBITMQ.upstreamAddress }}
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.25"
+          limits:
+            memory: "2Gi"
+            cpu: "0.5"
+      volumes:
+      - name: config-file
+        emptyDir: {}
+      - name: plugins-file
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: rabbitmq-config
+          defaultMode: 0755
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      {{- if or (eq .Values.INFRASTRUCTURE "gcp") (eq .Values.INFRASTRUCTURE "aws") }}
+      annotations:
+        volume.beta.kubernetes.io/storage-class: 'rabbitmq-ssd-storage-{{ .Release.Namespace | replace "_" "-" }}'
+      {{- end }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if eq .Values.INFRASTRUCTURE "VM" }}
+      storageClassName: "standard"
+      {{- end }}
+      resources:
+        requests:
+          storage: 500Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "rabbitmq-relay-backend-config"}'
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.RABBITMQ.microserviceConnectionURL }}
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 4369
+    targetPort: 4369
+    name: discovery
+    protocol: TCP
+  - port: 15672
+    name: management
+    targetPort: 15672
+    protocol: TCP
+  - port: 15675
+    name: mqttws
+    targetPort: 15675
+  - port: 8883
+    name: mqttssl
+    targetPort: 8883
+  - port: 1883
+    name: mqttdefault
+    targetPort: 1883
+  - port: 5672
+    targetPort: 5672
+    name: amqp
+    protocol: TCP
+  selector:
+    app: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-relay
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "rabbitmq-relay-backend-config"}'
+spec:
+  {{- if eq .Values.INFRASTRUCTURE "gcp" }}
+  type: ClusterIP
+  {{- end }}
+  {{-  if eq .Values.INFRASTRUCTURE "VM" }}
+  type: LoadBalancer
+  {{- end }}
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 15670
+    targetPort: 15670
+    name: websocket
+    protocol: TCP

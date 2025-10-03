@@ -1,0 +1,13 @@
+{{- if eq $.Values.INFRASTRUCTURE "gcp" }}
+{{- if .Values.ENVOY.install }}
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: managed-cert-grpc
+  namespace: {{ $.Release.Namespace | replace "_" "-" }}
+spec:
+  domains:
+    - {{ .Values.ENVOY.url }}
+    - {{ .Values.MICROSERVICE.httpURL }}
+{{- end }}
+{{- end }}

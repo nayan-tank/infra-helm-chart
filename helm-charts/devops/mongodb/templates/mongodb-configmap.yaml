@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-config
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+data:
+  mongod.conf: |
+    storage:
+      dbPath: /data/dbstore
+
+    net:
+      bindIp: 0.0.0.0
+      port: {{ .Values.MONGODB.MONGO_PORT }}
+      tls:
+        mode: requireTLS
+        certificateKeyFile: {{.Values.MONGODB.ssl_path }}/node.pem
+        certificateKeyFilePassword: password
+        CAFile: {{.Values.MONGODB.ssl_path }}/ca.pem
+
+    # Replica Set Configuration
+    replication:
+      replSetName: rs0
+
+    {{- if .Values.MONGODB.authentication }}
+    security:
+      clusterAuthMode: x509
+      authorization: enabled
+    {{- end }}
+

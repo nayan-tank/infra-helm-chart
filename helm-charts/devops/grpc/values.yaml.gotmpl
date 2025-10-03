@@ -1,0 +1,18 @@
+INFRASTRUCTURE: "{{ .Values.INFRASTRUCTURE }}"
+
+CERT_MANAGER:
+{{- toYaml .Values.CERT_MANAGER | nindent 2 }}
+
+RABBITMQ:
+{{- toYaml .Values.RABBITMQ | nindent 2 }}
+
+MONGODB:
+{{- toYaml .Values.MONGODB | nindent 2 }}
+
+MICROSERVICE:
+{{- toYaml .Values.MICROSERVICE | nindent 2 }}
+
+ENVOY:
+{{- toYaml .Values.ENVOY | nindent 2 }}
+
+

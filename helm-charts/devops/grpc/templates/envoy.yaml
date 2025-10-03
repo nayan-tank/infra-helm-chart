@@ -1,0 +1,177 @@
+{{- if .Values.ENVOY.install }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: envoy
+  template:
+    metadata:
+      labels:
+        app: envoy
+    spec:
+      containers:
+        - name: envoy
+          image: "envoyproxy/envoy:v1.30-latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.ENVOY.listener_port | int }}
+            - name: admin
+              containerPort: {{ .Values.ENVOY.admin_port | int }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.ENVOY.listener_port }}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+          args:
+            - "-c"
+            - "/etc/envoy/envoy.yaml"
+            - "--log-level"
+            - "info"
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    {{- if eq .Values.INFRASTRUCTURE "gcp" }}
+    cloud.google.com/backend-config: '{"default": "envoy-backendconfig"}'
+    {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.ENVOY.listener_port | int }}
+      targetPort: {{ .Values.ENVOY.listener_port | int }}
+  selector:
+    app: envoy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-admin
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  type: LoadBalancer
+  ports:
+    - name: admin
+      port: {{ .Values.ENVOY.admin_port | int }}
+      targetPort: {{ .Values.ENVOY.admin_port | int }}
+  selector:
+    app: envoy
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-config
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+data:
+  envoy.yaml: |
+    static_resources:
+      listeners:
+        - name: listener_0
+          address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: {{ .Values.ENVOY.listener_port | int }}
+          filter_chains:
+            - filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: ingress_http
+                    codec_type: AUTO
+                    route_config:
+                      name: local_route
+                      virtual_hosts:
+                        - name: local_service
+                          domains:
+                            - "*"
+                          cors:
+                            allow_origin_string_match:
+                              {{- range $origin := splitList "," .Values.MICROSERVICE.CONFIG.CORS }}
+                              - exact: {{ $origin | trim | quote }}
+                              {{- end }}
+                            allow_methods: "GET, PUT, DELETE, POST, OPTIONS"
+                            allow_headers: "keep-alive,user-agent,cache-control,content-type,authorization,x-grpc-web,x-user-agent,orgid,propertyid"
+                            expose_headers: "content-length,orgid,propertyid"
+                            max_age: "86400"
+                          routes:
+                            - match:
+                                prefix: "/healthz"
+                              direct_response:
+                                status: 200
+                            {{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+                            {{- if eq $v.enable "true" }}
+                            {{- if $v.ingress }}
+                            {{- if eq $v.ingressType "grpc" }}
+                            - match:
+                                prefix: "{{ $v.ingress }}"
+                              route:
+                                cluster: {{ $v.appName | replace "_" "-" }}-service
+                                timeout: 0s  # Disable timeout for streaming
+                            {{- end }}
+                            {{- end }}
+                            {{- end }}
+                            {{- end }}
+                    http_filters:
+                      - name: envoy.filters.http.cors
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+                      - name: envoy.filters.http.grpc_web
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                      - name: envoy.filters.http.router
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+      clusters:
+        {{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+        {{- if eq $v.enable "true" }}
+        {{- if $v.ingress }}
+        {{- if eq $v.ingressType "grpc" }}
+        - name: {{ $v.appName | replace "_" "-" }}-service
+          connect_timeout: 0.25s
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: { }  # Enable HTTP/2
+          load_assignment:
+            cluster_name: {{ $v.appName | replace "_" "-" }}-service
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: {{ $v.appName | replace "_" "-" }}.{{ $.Release.Namespace | replace "_" "-"}}.svc.cluster.local
+                          port_value: "{{ $v.port | int }}"
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+    admin:
+      access_log_path: /tmp/admin_access.log
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: {{ .Values.ENVOY.admin_port | int }}
+{{- end }}

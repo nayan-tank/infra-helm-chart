@@ -1,0 +1,39 @@
+INFRASTRUCTURE: gcp
+
+EXTERNALDNS:
+  install: true
+  provider: google
+  google:
+    project: "default"
+    serviceAccountSecret: 'external-dns-serviceacc/credentials.json'
+  annotations:
+    iam.gke.io/gcp-service-account: external-dns-sa@default.iam.gserviceaccount.com
+  domainFilters:
+    - g.example.com
+
+INGRESS:
+  install: true
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+
+CERT_MANAGER:
+  install: true
+
+MONGODB:
+  install: false
+
+RABBITMQ:
+  install: true
+  Namespace: rabbits
+  vhost: "production"
+  microserviceConnectionURL: "queue.as1.g.example.com"
+  upstreamAddress: "tcp://rabbitmq:5672"
+  username: "admin"
+  password: "password"
+  mqtt_exchange: "amq.topic"
+
+ENVOY:
+  install: false
+
+MICROSERVICE:
+  install: false

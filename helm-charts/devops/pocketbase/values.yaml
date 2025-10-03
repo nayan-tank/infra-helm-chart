@@ -1,0 +1,65 @@
+## @section PocketBase configuration
+##
+
+# Namespace: pocketbase
+
+## @param replicaCount How many replicas of pocketbase should be deployed, it is ignored if autoscaling is enabled
+## @param nameOverride String to partially override the deployment name (will maintain the release name)
+## @param fullnameOverride String to fully override the deployment name
+##
+replicaCount: 1
+nameOverride: ""
+fullnameOverride: pocketbase
+
+## @param flags.encryptionEnv The PB_ENCRYPTION_KEY 32 characters string, see https://pocketbase.io/docs/going-to-production/#:~:text=enable%20settings%20encryption for more infos
+##
+flags:
+  encryptionEnv: "Q3ZpS0FmVVRHT1lFNzNyTXhRa3ZlY3de"
+
+
+## @param image.repository The repository (and image name) where the pocketbase docker image is stored
+## @param image.pullPolicy Deployment pull policy
+## @param image.tag Overrides the image tag whose default is the chart appVersion
+##
+image:
+  repository: ghcr.io/techwolf12/pocketbase
+  pullPolicy: Always
+  tag: "0.27.0"
+  # pullsecret: ""
+
+## @param persistence.storage How much storage space should be reserved for PocketBase
+## @param persistence.storageClass The PV storage class (a storageClass with Retain policy is recommended)
+##
+persistence:
+  storage: 5Gi
+  storageClass: "standard"
+
+## @param ingress.enabled Whether to enable the ingress
+## @param ingress.clusterIssuer The Cert Manager cluster issuer (https://cert-manager.io/docs/configuration/acme/http01/)
+## @param ingress.dns The dns name which will expose PocketBase
+ingress:
+  enabled: true
+  host: "pb.as1.dg.upswing.global"
+  tlsSecret: "pocketbase-cert"
+
+## @param resources The resources associated with the deployment
+resources: 
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+
+## @param autoscaling.enabled Whether to enable autoscaling
+## @param autoscaling.minReplicas number of min replicas
+## @param autoscaling.maxReplicas number of max replicas
+## @param autoscaling.targetCPUUtilizationPercentage targetCPUUtilizationPercentage
+## @param autoscaling.targetMemoryUtilizationPercentage targetMemoryUtilizationPercentage
+autoscaling:
+  enabled: false 
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80

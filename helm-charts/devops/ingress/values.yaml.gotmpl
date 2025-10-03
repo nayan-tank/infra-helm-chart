@@ -1,0 +1,34 @@
+controller:
+  kind: Deployment
+
+  stats:
+    enabled: true
+    omitClusterIP: true
+    type: ClusterIP
+
+  ingressClassResource:
+    name: nginx-external
+    enabled: true
+    default: false
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+
+  publishService:
+    enabled: true
+
+  service:
+    targetPorts:
+      http: http
+      https: https
+    annotations:
+{{- toYaml .Values.INGRESS.annotations | nindent 6 }}

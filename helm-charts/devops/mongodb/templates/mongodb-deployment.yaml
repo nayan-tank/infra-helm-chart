@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: mongo-db
+  name: mongo-db
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  serviceName: mongodb-svc
+  replicas: {{ .Values.MONGODB.MONGO_REPLICA }}
+  selector:
+    matchLabels:
+      app: mongo-db
+  template:
+    metadata:
+      annotations:
+        checksum/values: {{ printf "%t" .Values.MONGODB.authentication | sha256sum }}  # Checksum the variable
+      labels:
+        app: mongo-db
+    spec:
+      containers:
+      - name: mongo
+        image: mongo:7.0.11
+        command:
+          - mongod
+        args:
+          - --config
+          - /etc/mongo/mongod.conf
+        env:
+        - name: MONGODB_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo-creds
+              key: username
+        - name: MONGODB_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongo-creds
+              key: password
+        ports:
+          - containerPort: {{ .Values.MONGODB.MONGO_PORT }}
+        livenessProbe:
+          exec:
+            command:
+              - mongosh
+              - --host
+              - localhost
+              - --tls
+              - --tlsCAFile
+              - {{ .Values.MONGODB.ssl_path }}/ca.pem
+              - --tlsCertificateKeyFile
+              - {{ .Values.MONGODB.ssl_path }}/client.pem
+              - --eval
+              - "db.adminCommand('ping')"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 15
+          successThreshold: 1
+          failureThreshold: 6
+        readinessProbe:
+          exec:
+            command:
+              - mongosh
+              - --host
+              - localhost
+              - --tls
+              - --tlsCAFile
+              - {{ .Values.MONGODB.ssl_path }}/ca.pem
+              - --tlsCertificateKeyFile
+              - {{ .Values.MONGODB.ssl_path }}/client.pem
+              - --eval
+              - "db.adminCommand('ping')"
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 15
+          successThreshold: 1
+          failureThreshold: 6
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.5"
+          limits:
+            memory: "2Gi"
+            cpu: "1"
+        volumeMounts:
+        - name: mongo-data-dir
+          mountPath: "/data/dbstore"
+        - name: mongo-config
+          mountPath: "/etc/mongo"
+        - name: mongo-ssl
+          mountPath: {{ .Values.MONGODB.ssl_path }}
+          readOnly: true
+      volumes:
+        - name: mongo-config
+          configMap:
+            name: mongo-config
+        - name: mongo-ssl
+          secret:
+            secretName: mongo-ssl
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-data-dir
+      annotations:
+        volume.beta.kubernetes.io/storage-class: 'mongodb-ssd-storage-{{ .Release.Namespace | replace "_" "-" }}'
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: {{ .Values.MONGODB.MONGO_STORAGE }}

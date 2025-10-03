@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  serviceName: rabbitmq-headless
+  replicas: {{ .Values.RABBITMQ_MULTINODE.replicaCount }}
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      serviceAccountName: rabbitmq
+      initContainers:
+      - name: init-copy-cookie-and-plugin
+        image: busybox
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          cp /secret/.erlang.cookie /erlang-cookie/.erlang.cookie && \
+          chown 999:999 /erlang-cookie/.erlang.cookie && \
+          chmod 400 /erlang-cookie/.erlang.cookie
+          cp /tmp/config/rabbitmq.conf /config/rabbitmq.conf && ls -l /config/ && cp /tmp/config/enabled_plugins /etc/rabbitmq/enabled_plugins
+        volumeMounts:
+        - name: rabbitmq-erlang-cookie
+          mountPath: /secret
+        - name: erlang-cookie
+          mountPath: /erlang-cookie
+        - name: config
+          mountPath: /tmp/config/
+          readOnly: false
+        - name: config-file
+          mountPath: /config/
+        - name: plugins-file
+          mountPath: /etc/rabbitmq/
+      containers: 
+      - name: rabbitmq
+        image: {{ .Values.RABBITMQ_MULTINODE.imageVersion }}
+        ports:
+        - containerPort: 4369
+          name: discovery
+        - containerPort: 15672
+          name: management
+        - containerPort: 5672
+          name: amqp
+        - containerPort: 25672
+          name: clustering
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.25"
+          limits:
+            memory: "2Gi"
+            cpu: "0.5"
+        env:
+        - name: RABBIT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: RABBIT_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(RABBIT_POD_NAME).rabbitmq-headless.$(RABBIT_POD_NAMESPACE).svc.cluster.local
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_CLUSTER_DISCOVERY
+          value: "k8s"
+        - name: RABBITMQ_CLUSTER_DISCOVERY_K8S_HOST
+          value: "kubernetes.default.svc.cluster.local"
+        - name: RABBITMQ_CLUSTER_DISCOVERY_K8S_ADDRESS_TYPE
+          value: "hostname"
+        - name: RABBITMQ_CLUSTER_DISCOVERY_K8S_SERVICE_NAME
+          value: "rabbitmq-headless"
+        - name: RABBITMQ_CONFIG_FILE
+          value: "/config/rabbitmq"
+        - name: K8S_HOSTNAME_SUFFIX
+          value: .rabbitmq-headless.$(RABBIT_POD_NAMESPACE).svc.cluster.local
+        volumeMounts:
+        - name: multinode-data
+          mountPath: /var/lib/rabbitmq
+          readOnly: false
+        - name: config-file
+          mountPath: /config/
+        - name: plugins-file
+          mountPath: /etc/rabbitmq/
+        - name: erlang-cookie
+          mountPath: /var/lib/rabbitmq/.erlang.cookie
+          subPath: .erlang.cookie
+      - name: rabbitmq-relay
+        image: cloudamqp/websocket-tcp-relay:v1.0.6
+        ports:
+          - containerPort: 15670
+            name: websocket
+        args:
+          - "--upstream"
+          - {{ .Values.RABBITMQ_MULTINODE.upstreamAddress }}
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "0.25"
+          limits:
+            memory: "2Gi"
+            cpu: "0.5"
+      volumes:
+      - name: config-file
+        emptyDir: {}
+      - name: plugins-file
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: rabbitmq-config
+          defaultMode: 0755
+      - name: erlang-cookie
+        emptyDir: {}
+      - name: rabbitmq-erlang-cookie
+        secret:
+          secretName: {{ .Release.Name }}-secrets
+          items:
+            - key: erlang-cookie
+              path: .erlang.cookie
+  volumeClaimTemplates:
+  - metadata:
+      name: multinode-data
+      {{- if or (eq .Values.INFRASTRUCTURE "gcp") (eq .Values.INFRASTRUCTURE "aws") }}
+      annotations:
+        volume.beta.kubernetes.io/storage-class: 'rabbitmq-ssd-storage-{{ .Release.Namespace | replace "_" "-" }}'
+      {{- end }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if eq .Values.INFRASTRUCTURE "VM" }}
+      storageClassName: "standard"
+      {{- end }}
+      resources:
+        requests:
+          storage: 500Mi

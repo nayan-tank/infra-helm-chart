@@ -1,0 +1,64 @@
+INFRASTRUCTURE: gcp
+
+VELERO:
+  install: false
+
+EXTERNALDNS:
+  install: true
+  provider: google
+  txtOwnerId: test-internal
+  google:
+    project: "default"
+    serviceAccountSecret: 'external-dns-serviceacc/credentials.json'
+  annotations:
+    iam.gke.io/gcp-service-account: external-dns-sa@test.iam.gserviceaccount.com
+  domainFilters:
+    - a.example.com
+
+INGRESS:
+  install: true
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+
+CERT_MANAGER:
+  install: true
+
+MONGODB:
+  install: false
+  Namespace: store
+  baseURL: "v.dg.example.com"
+  microserviceConnectionURL:
+    - "mongodb+srv://devAdmin:***********@******.mongodb.net" # Atlas dev
+#    - "mongo-db-0.store.a.b.example.com:27017"
+#    - "mongo-db-1.store.a.b.example.com:27017"
+#    - "mongo-db-2.store.a.b.example.com:27017"
+
+RABBITMQ:
+  install: true
+  Namespace: queue
+  vhost: "production"
+  microserviceConnectionURL: "queue.a.b.example.com"
+  upstreamAddress: "tcp://rabbitmq:5672"
+  username: "admin"
+  password: "jsdsdhuehuwe"
+  mqtt_exchange: "amq.topic"
+
+RABBITMQ_MULTINODE:
+  install: false
+  Namespace: rabbitmq-multinode
+  vhost: "production"
+  microserviceConnectionURL: "mq.a.b..example.com"
+  upstreamAddress: "tcp://rabbitmq:5671"
+  username: "admin"
+  password: "hdhdeiuewh"
+  mqtt_exchange: "amq.topic"
+
+POCKETBASE:
+  install: true 
+  Namespace: pocketbase
+  
+ENVOY:
+  install: false  
+
+MICROSERVICE:
+  install: false

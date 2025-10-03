@@ -1,0 +1,22 @@
+INFRASTRUCTURE: "gcp"  # "VM" / "aws" / "AZURE" / "VM" / "gcp"
+CONFIG:
+  TZ: "Asia/Kolkata"
+
+MONGODB:
+  baseURL: "as1.dg.upswing.global"
+  microserviceConnectionURL:
+    - "mongo-db-0.store.me.upswing.global:27017"
+    - "mongo-db-1.store.me.upswing.global:27017"
+    - "mongo-db-2.store.me.upswing.global:27017"
+  MONGO_USERNAME: "admin"
+  MONGO_PASSWORD: "x24n3hjJDk3DDl2S"
+  MONGO_ROOT_USERNAME: "clusterAdmin"
+  MONGO_ROOT_PASSWORD: "js23NHS93njds3DS#skd"
+  MONGO_PORT: 27017
+  MONGO_STORAGE: 10Gi
+  MONGO_REPLICA: 3
+  authentication: false # important to keep it false as initially before deployment ssl needs to be disabled and only after rs0 setup it needs to be enabled.
+  ssl_path: "/ssl/custom"
+  ssl_ca_pem: "ca.pem"
+  ssl_member_pem: "node.pem"
+  ssl_client_pem: "client.pem"

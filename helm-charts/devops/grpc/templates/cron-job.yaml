@@ -1,0 +1,45 @@
+{{- range $k, $v := .Values.MICROSERVICE.JOBS }}
+{{ if eq $v.enable "true" }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $v.appName | replace "_" "-"}}
+  namespace: {{ $.Release.Namespace | replace "_" "-" }}
+spec:
+  schedule: {{ $v.schedule }}
+  successfulJobsHistoryLimit: {{ $v.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ $v.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: {{ $v.appName | replace "_" "-"}}
+        spec:
+          containers:
+              {{- if eq $v.appType "image" }}
+            - name: {{ $v.appName | replace "_" "-" }}
+              image: "ghcr.io/*************/*********/{{ $v.appName | replace "-" "_"}}_image:{{ $v.appVersion }}"
+              ports:
+                - containerPort: 8080
+              envFrom:
+                - configMapRef:
+                    name: configmap
+                - secretRef:
+                    name: secret
+              {{- end }}
+              {{- if eq $v.appType "curl" }}
+            - name: {{ $v.appName | replace "_" "-" }}
+              image: "curlimages/curl"
+              command:
+                - sh
+                - -c
+              args:
+                - curl -X 'GET' {{ $v.curlCMD }}
+              {{- end }}
+          restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: githubkubernetes
+{{ end }}
+{{- end }}

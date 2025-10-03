@@ -1,0 +1,31 @@
+provider: {{ .Values.EXTERNALDNS.provider }}
+domainFilters:
+{{- toYaml .Values.EXTERNALDNS.domainFilters | nindent 2 }}
+policy: sync
+interval: 10s
+rbac:
+  create: true
+  apiVersion: v1
+serviceAccount:
+  create: true
+  name: external-dns
+  annotations:
+{{- toYaml .Values.EXTERNALDNS.annotations | nindent 4 }}
+txtOwnerId: {{ .Values.EXTERNALDNS.txtOwnerId }}
+logLevel: info
+sources:
+  - service
+  - ingress
+## Limit external-dns resources
+resources:
+  limits:
+    memory: 50Mi
+  requests:
+    memory: 50Mi
+    cpu: 10m
+# Add the google specific configuration if provider is google
+{{- if eq .Values.EXTERNALDNS.provider "google" }}
+google:
+  project: "{{ .Values.EXTERNALDNS.google.project }}"
+  serviceAccountSecret: "{{ .Values.EXTERNALDNS.google.serviceAccountSecret }}"
+{{- end }}

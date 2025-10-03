@@ -1,0 +1,13 @@
+{{ if eq .Values.INFRASTRUCTURE "gcp" }}
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: rabbitmq-relay-backend-config
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  timeoutSec: 84600
+  healthCheck:
+    checkIntervalSec: 290
+    requestPath: /  # RabbitMQ's default health check endpoint
+    port: 15672
+{{ end }}

@@ -1,0 +1,42 @@
+INFRASTRUCTURE: aws
+
+EXTERNALDNS:
+  install: true
+  provider: aws
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::*****:role/externalDNS
+  domainFilters:
+    - a.example.com
+
+INGRESS:
+  install: false
+
+CERT_MANAGER:
+  install: false
+
+MONGODB:
+  install: true
+  Namespace: store
+  baseURL: "me.a.example.com"
+  microserviceConnectionURL:
+    - "mongodb+srv://admin:***********@*********.mongodb.net"
+#    - "mongo-db-0.store.me.a.example.com:27017"
+#    - "mongo-db-1.store.me.a.example.com:27017"
+#    - "mongo-db-2.store.me.a.example.com:27017"
+
+RABBITMQ:
+  install: false
+  # important to keep though install is false as this file is referred in multiple deployments
+  Namespace: rabbits
+  vhost: "production"
+  microserviceConnectionURL: "queue.g.example.com"
+  upstreamAddress: "tcp://rabbitmq:5672"
+  username: "admin"
+  password: "7389h73wddwhej"
+  mqtt_exchange: "amq.topic"
+
+ENVOY:
+  install: false
+
+MICROSERVICE:
+  install: false

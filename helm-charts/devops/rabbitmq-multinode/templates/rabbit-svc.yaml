@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+spec:
+  clusterIP: None
+  ports:
+  - port: 25672
+    name: clustering
+    targetPort: 25672
+  - port: 4369
+    targetPort: 4369
+    name: discovery
+    protocol: TCP
+  - port: 5672 
+    targetPort: 5672
+    name: amqp
+    protocol: TCP
+  selector:
+    app: rabbitmq
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "rabbitmq-relay-backend-config"}'
+    external-dns.alpha.kubernetes.io/hostname: {{ .Values.RABBITMQ_MULTINODE.microserviceConnectionURL }}
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    name: http
+    targetPort: 80
+  - port: 443
+    name: https
+    targetPort: 443
+  - port: 25672
+    name: clustering
+    targetPort: 25672
+  - port: 4369
+    targetPort: 4369
+    name: discovery
+    protocol: TCP
+  - port: 15675
+    name: mqttws
+    targetPort: 15675
+  - port: 8883
+    name: mqttssl
+    targetPort: 8883
+  - port: 1883
+    name: mqttdefault
+    targetPort: 1883
+  - port: 5672 
+    targetPort: 5672
+    name: amqp
+  - port: 5671
+    targetPort: 5671
+    name: amqp-tls
+    protocol: TCP
+  - port: 5552
+    targetPort: 5552
+    name: stream
+    protocol: TCP
+  - name: management
+    port: 15672
+    targetPort: 15672
+  selector:
+    app: rabbitmq
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-relay
+  namespace: {{ .Release.Namespace | replace "_" "-" }}
+  annotations:
+    cloud.google.com/backend-config: '{"default": "rabbitmq-relay-backend-config"}'
+spec:
+  {{- if eq .Values.INFRASTRUCTURE "gcp" }}
+  type: ClusterIP
+  {{- end }}
+  {{-  if eq .Values.INFRASTRUCTURE "VM" }}
+  type: LoadBalancer
+  {{- end }}
+  selector:
+    app: rabbitmq
+  ports:
+  - port: 15670
+    targetPort: 15670
+    name: websocket
+    protocol: TCP

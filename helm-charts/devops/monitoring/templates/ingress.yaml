@@ -1,0 +1,34 @@
+{{- if eq .Values.INFRASTRUCTURE "gcp" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: http-ingress-gcp
+  namespace: {{ .Values.NAMESPACE | replace "_" "-" }}
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: monitor-web-ip
+    networking.gke.io/managed-certificates: managed-cert
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    ingress.kubernetes.io/enable-cors: "true"
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+    - host: {{ .Values.MONITOR.BASE_URL }}
+      http:
+        paths:
+          {{- range $k, $v := .Values.SERVICES }}
+          {{- if eq $v.enable "true" }}
+          {{- if $v.ingress }}
+          {{- if eq $v.ingressType "http" }}
+          - path: {{ $v.ingress }}
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: {{ $v.serviceName }}
+                port:
+                  number: 80
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+{{- end }}

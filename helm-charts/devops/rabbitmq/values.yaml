@@ -1,0 +1,14 @@
+INFRASTRUCTURE: "gcp" # VM / AWS / gcp
+
+RABBITMQ:
+  imageVersion: rabbitmq:4.0.8-management
+  vhost: "development"
+  # used by frontend to connect to rabbitmq using websocket
+  relayURL: "localhost"
+  # microserviceConnectionURL: used by backend to connect pika to amqp directly. If running on same cluster, use local
+  # domain to connect to rabbitmq else use 'amqpURL' ip to connect to rabbitmq publicly
+  microserviceConnectionURL: "localhost"
+  upstreamAddress: "tcp://rabbitmq:5672"
+  username: "admin"
+  password: "password"
+  mqtt_exchange: "amq.topic"

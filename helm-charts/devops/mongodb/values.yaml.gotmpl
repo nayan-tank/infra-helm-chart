@@ -1,0 +1,4 @@
+INFRASTRUCTURE: "{{ .Values.INFRASTRUCTURE }}"
+
+MONGODB:
+{{- toYaml .Values.MONGODB | nindent 2 }}

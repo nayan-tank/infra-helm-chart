@@ -1,0 +1,84 @@
+INFRASTRUCTURE: gcp
+
+EXTERNALDNS:
+  install: false
+
+INGRESS:
+  install: false
+
+CERT_MANAGER:
+  install: false
+
+MONGODB:
+  install: false
+  Namespace: store
+  baseURL: "me.a.example.com"
+  microserviceConnectionURL:
+    - "mongodb+srv://admin:**********@*******.mongodb.net"
+#    - "mongo-db-0.store.me.a.example.com:27017"
+#    - "mongo-db-1.store.me.a.example.com:27017"
+#    - "mongo-db-2.store.me.a.example.com:27017"
+
+RABBITMQ:
+  install: false
+
+ENVOY:
+  install: true
+  url: "service.example.com"
+
+MICROSERVICE:
+  install: true
+  Namespace: me-service
+  httpURL: "api.example.com"
+  grpcURL: "grpc.example.com"
+
+  CONFIG:
+    PROJECT: "upswing-global"
+    CORS: "capacitor://localhost,ionic://localhost,http://localhost,http://localhost:4200,http://localhost:8100,https://a.example.com,https://ui.example.com, https://ai.example.com"
+    TZ: "Asia/Kolkata"
+    GCP_STRING: ''
+
+  SERVICES:
+    app:
+      enable: "true"
+      appVersion: "25.03.19.27"
+
+    appgrpc:
+      enable: "true"
+      appVersion: "25.03.19.27"
+
+    admin:
+      enable: "true"
+      appVersion: "25.03.19.27"
+
+    communication:
+      enable: "true"
+      appVersion: "25.03.19.28"
+
+    cms:
+      enable: "true"
+      appVersion: "25.03.19.27"
+
+    housekeeping:
+      enable: "true"
+      appVersion: "25.03.24.29"
+      geminiKey: "*****************"
+
+    housekeeping_api:
+      enable: "true"
+      appVersion: "25.03.19.27"
+
+    reports:
+      enable: "true"
+      appVersion: "25.03.24.29"
+      geminiKey: "*****************"
+
+    job_scheduler:
+      enable: "true"
+      appVersion: "25.03.24.29"
+
+  JOBS:
+    reports-hourly-trigger:
+      enable: "true"
+      schedule: "0 * * * *"
+      curlCMD: "http://reports.me-service:8059/reports/trigger/hourly"

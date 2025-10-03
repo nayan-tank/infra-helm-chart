@@ -1,0 +1,1 @@
+k3d cluster create development --api-port 0.0.0.0:6443 --port '80:80@loadbalancer' --port '443:443@loadbalancer' --port '15672:15672@loadbalancer' --port '5672:5672@loadbalancer' --port '27017:27017@loadbalancer'  --agents 2 --k3s-arg "--disable=traefik@server:0"

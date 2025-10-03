@@ -1,0 +1,85 @@
+configuration:
+  features: EnableCSI
+  backupStorageLocation:
+    - name: default
+      provider: gcp
+      default: true
+      bucket: example.com-backup
+      prefix: velero-backups
+      config:
+        serviceAccount: "velero@example.com.iam.gserviceaccount.com"
+  volumeSnapshotLocation:
+    - name: default
+      provider: gcp
+      config:
+        serviceAccount: "velero@example.com.iam.gserviceaccount.com"
+
+serviceAccount:
+    name: "velero"
+    annotations:
+      iam.gke.io/gcp-service-account: "velero@example.com.iam.gserviceaccount.com"
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 5m
+    memory: 20Mi
+
+podAnnotations:
+  cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+
+initContainers:
+  - name: velero-plugin-for-gcp
+    image: velero/velero-plugin-for-gcp:v1.11.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+# Credentials secret
+credentials:
+  useSecret: true
+  secretContents:
+    cloud: |  # This key name corresponds to the serviceAccount path
+      {
+        "type": "service_account",
+        "project_id": "example.com",
+        "private_key_id": "some_key_id",
+        "private_key": "some_private_key",
+        "client_email": "velero@example.com.iam.gserviceaccount.com",
+        "client_id": "113413180648054052813",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/velero%40example.com.iam.gserviceaccount.com",
+        "universe_domain": "googleapis.com"
+      }
+
+# Backup schedules
+schedules:
+  # Full-cluster backup every 7 days
+  full-cluster-backup:
+    schedule: "0 0 * * 0"  # Every 7 days (Sunday at midnight)
+    template:
+      ttl: "168h"  # 7 days retention for backups
+      storageLocation: default
+      includedNamespaces: []  # Empty means all namespaces
+      excludedNamespaces: []  # No namespaces excluded
+      includedResources: []  # Empty means all resources
+      excludedResources: []
+      hooks: {}  # Optional lifecycle hooks (can be omitted if not needed)
+
+  # MongoDB-only backup every 12 hours
+  mongodb-backup:
+    schedule: "* */12 * * *"  # Every 12 hours
+    template:
+      ttl: "36h"  # 36 hours retention for backups (~recent 3 backups kept)
+      storageLocation: default
+      includedNamespaces:
+        - store  # Include only the namespace where MongoDB is deployed
+      includedResources: []  # Empty means all resources
+      excludedResources: []
+      hooks: {}  # Optional lifecycle hooks (can be omitted if not needed)

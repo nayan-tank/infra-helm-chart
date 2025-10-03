@@ -1,0 +1,28 @@
+==> INFRASTRUCTURE : {{ .Values.INFRASTRUCTURE }}
+==> NAMESPACE      : {{ .Release.Namespace | replace "_" "-" }}
+==> MongoDB        : {{ .Values.MONGODB.Namespace }}
+==> MongoDB URL    : {{ .Values.MONGODB.microserviceConnectionURL }}
+==> RABBITMQ URL   : {{ .Values.RABBITMQ.microserviceConnectionURL }}
+{{- range $k, $v := .Values.MICROSERVICE.SERVICES }}
+{{- if eq $v.enable "true" }}
+============ {{ $k }} deployment ============
+===> Microservice   : {{ $v.appName }}
+===> Version        : {{ $v.appVersion }}
+{{- if $v.ingress }}
+===> Ingress Mode   : {{ $v.ingressType }}
+===> Ingress        : {{ if eq $v.ingressType "http" }}https://{{ $.Values.MICROSERVICE.httpURL }}{{ end }}{{ $v.ingress }}
+{{- end }}
+===> Replicas       : {{ $v.replicas}} replicas
+=============================================
+{{- end }}
+{{- end }}
+
+{{- range $k, $v := .Values.MICROSERVICE.JOBS }}
+{{- if eq $v.enable "true" }}
+============ {{ $k }} deployment ============
+===> CRON JOB       : {{ $v.appName }}
+===> Version        : {{ $v.appVersion }}
+===> Schedule       : {{ $v.schedule }}
+=============================================
+{{- end }}
+{{- end }}
