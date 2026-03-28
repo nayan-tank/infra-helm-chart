@@ -3,6 +3,42 @@ environments:
     values:
       - ./env/dev/local-core.yaml
 
+  # Kynect Dev 
+  dev-kynect-core:
+    values:
+      - ./env/dev/dev-kynect-core.yaml
+  dev-kynect-service:
+    values:
+      - ./env/dev/dev-kynect-core.yaml
+      - ./env/dev/dev-kynect-service.yaml
+
+  # Kynect Staging
+  staging-kynect-core:
+    values:
+      - ./env/staging/staging-kynect-core.yaml
+  staging-kynect-service:
+    values:
+      - ./env/staging/staging-kynect-core.yaml
+      - ./env/staging/staging-kynect-service.yaml
+
+  # Kynect Prod 
+  prod-kynect-core:
+    values:
+      - ./env/prod/prod-kynect-core.yaml
+  prod-kynect-service:
+    values:
+      - ./env/prod/prod-kynect-core.yaml
+      - ./env/prod/prod-kynect-service.yaml
+
+  # Kynect RC
+  rc-kynect-core:
+    values:
+      - ./env/prod/rc-kynect-core.yaml
+  rc-kynect-service:
+    values:
+      - ./env/prod/rc-kynect-core.yaml
+      - ./env/prod/rc-kynect-service.yaml
+      
   # GCP Development
   dev-gcp-as1-core:
     values:
@@ -15,7 +51,7 @@ environments:
   # On Prem Development
   onprem-mac:
     values:
-      - ./env/dev/gcp-as1-core.yaml
+      - ./env/prod/aws-me-core.yaml
       - ./env/onprem/mac.yaml
 
   # AWS Production
@@ -31,6 +67,23 @@ environments:
     values:
       - ./env/prod/gcp-as1-core.yaml
       - ./env/prod/gcp-as1-me-service.yaml
+  # On Prem Production
+  client-gm:
+    values:
+      - ./env/prod/aws-me-core.yaml
+      - ./env/onprem/grand-millennium.yaml
+  client-mohg:
+    values:
+      - ./env/prod/aws-me-core.yaml
+      - ./env/onprem/mohg.yaml
+  client-taj:
+    values:
+      - ./env/prod/aws-me-core.yaml
+      - ./env/onprem/taj.yaml
+  client-emaar:
+    values:
+      - ./env/prod/aws-me-core.yaml
+      - ./env/onprem/emaar.yaml
 ---
 repositories:
 
@@ -50,12 +103,52 @@ repositories:
   - name: techwolf12
     url: https://helm.techwolf12.nl
   {{- end }}
+  {{- if .Values.REDIS_SENTINEL.install | default false }}
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+  {{- end }}
+  {{- if .Values.SONARQUBE.install | default false }}
+  - name: sonarqube
+    url: https://SonarSource.github.io/helm-chart-sonarqube
+  {{- end }}
+  {{- if .Values.CHROMADB.install | default false }}
+  - name: chromadb-helm
+    url: https://amikos-tech.github.io/chromadb-chart/
+  {{- end }}
   - name: devops
-    url: ghcr.io/***********/devops
+    url: ghcr.io/<organization>/devops
     oci: true
 
-releases:
+templates:
+  notify: &notify
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: bash
+        args:
+          - -c
+          - |
+            USER_NAME=$(whoami)
+            HOST=$(hostname)
+            TIME=$(date)
+            ENVIRONMENT="{{ .Environment.Name }}"
 
+            CMD=$(ps -o command= -p $PPID)
+            SELECTOR=$(echo "$CMD" | grep -oP '(?<=--selector )[^ ]+')
+
+            curl -X POST "https://chat.googleapis.com/v1/spaces/ABCD/messages?key=AIzaSyDdI***************&token=NzidwA******************" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"text\": \"🚀 *Helmfile sync executed*
+              *User:* $USER_NAME
+              *Host:* $HOST
+              *Time:* $TIME
+              *Environment:* $ENVIRONMENT
+              *Selector:* $SELECTOR\"
+            }"
+            
+releases:
+ 
   {{- if .Values.INGRESS.install | default false }}
   - name: ingress-nginx
     namespace: ingress-nginx
@@ -64,6 +157,24 @@ releases:
     installed: {{ .Values.INGRESS.install | default false }}
     values:
       - ./ingress/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.GATEWAYAPI.install | default false }}
+  - name: gatewayapi
+    namespace: envoy-gateway-system
+    chart: oci://docker.io/envoyproxy/gateway-helm
+    version: 1.7.1
+    installed: {{ .Values.GATEWAYAPI.install | default false }}
+    values:
+      - ./gatewayapi/values.yaml
+    hooks:
+      - events: ["prepare"]
+        command: "kubectl"
+        args:
+          - apply
+          - -f
+          - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
   {{- end }}
 
   {{- if .Values.EXTERNALDNS.install | default false }}
@@ -73,6 +184,7 @@ releases:
     installed: {{ .Values.EXTERNALDNS.install | default false }}
     values:
       - ./external-dns/values.yaml.gotmpl
+    <<: *notify
   {{- end }}
 
   {{- if .Values.CERT_MANAGER.install | default false }}
@@ -83,6 +195,7 @@ releases:
     installed: {{ .Values.CERT_MANAGER.install | default false }}
     values:
       - ./cert-manager/values.yaml
+    <<: *notify
   {{- end }}
 
   {{- if .Values.MONGODB.install | default false }}
@@ -93,6 +206,7 @@ releases:
     values:
       - ./mongodb/values.yaml.gotmpl
       - ./mongodb/cert/{{`{{ .Values.MONGODB.Namespace }}`}}-{{`{{ .Values.MONGODB.baseURL | replace "." "-" }}`}}/certificates.yaml
+    <<: *notify
   {{- end }}
 
   {{- if .Values.RABBITMQ.install | default false }}
@@ -102,6 +216,7 @@ releases:
     installed: {{ .Values.RABBITMQ.install | default false }}
     values:
       - ./rabbitmq/values.yaml.gotmpl
+    <<: *notify
   {{- end }}
 
   {{- if .Values.RABBITMQ_MULTINODE.install | default false }}
@@ -111,6 +226,60 @@ releases:
     installed: {{ .Values.RABBITMQ_MULTINODE.install | default false }}
     values:
       - ./rabbitmq-multinode/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.REDIS_SENTINEL.install | default false }}
+  - name: redis-sentinel
+    namespace: {{ .Values.REDIS_SENTINEL.Namespace }}
+    chart: bitnami/redis
+    version: 24.1.0
+    installed: {{ .Values.REDIS_SENTINEL.install | default false }}
+    values:
+      - ./redis-sentinel/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.REDIS_SENTINEL.install | default false }}
+  - name: redis-sentinel-dashboard
+    namespace: {{ .Values.REDIS_SENTINEL.Namespace }}
+    chart: ./redis-sentinel-dashboard
+    installed: {{ .Values.REDIS_SENTINEL.install | default false }}
+    values:
+      - ./redis-sentinel-dashboard/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.REDIS_SENTINEL.install | default false }}
+  - name: redisinsight
+    namespace: {{ .Values.REDIS_SENTINEL.Namespace }}
+    chart: ./redisinsight
+    installed: {{ .Values.REDIS_SENTINEL.install | default false }}
+    values:
+      - ./redisinsight/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.n8n.install | default false }}
+  - name: n8n
+    namespace: {{ .Values.n8n.Namespace }}
+    chart: oci://8gears.container-registry.com/library/n8n
+    version: 1.0.0
+    installed: {{ .Values.n8n.install | default false }}
+    values:
+      - ./n8n/values.yaml
+    <<: *notify
+  {{- end }}
+
+  {{- if .Values.SONARQUBE.install | default false }}
+  - name: sonarqube
+    namespace: {{ .Values.SONARQUBE.Namespace }}
+    chart: sonarqube/sonarqube
+    version: 2025.6.1
+    installed: {{ .Values.SONARQUBE.install | default false }}
+    values:
+      - ./sonarqube/values.yaml
+    <<: *notify
   {{- end }}
 
   {{- if .Values.MICROSERVICE.install | default false }}
@@ -120,15 +289,12 @@ releases:
     installed: {{ .Values.MICROSERVICE.install | default false }}
     values:
       - ./grpc/values.yaml.gotmpl
-      - ./mongodb/cert/{{`{{ .Values.MONGODB.Namespace }}`}}-{{`{{ .Values.MONGODB.baseURL | replace "." "-" }}`}}/certificates.yaml
+      # - ./mongodb/cert/{{`{{ .Values.MONGODB.Namespace }}`}}-{{`{{ .Values.MONGODB.baseURL | replace "." "-" }}`}}/certificates.yaml
       - deploymentTime: '{{ now | date "2006-01-02T15:04:05" }}'
-    {{- if .Values.CERT_MANAGER.install | default false }}
-    needs:
-      - cert-manager/cert-manager
-    {{- end }}
+    <<: *notify
   {{- end }}
 
-   {{- if .Values.POCKETBASE.install | default false }}
+  {{- if .Values.POCKETBASE.install | default false }}
   - name: pocketbase
     namespace: {{ .Values.POCKETBASE.Namespace }}
     chart: ./pocketbase
@@ -136,4 +302,27 @@ releases:
     installed: {{ .Values.POCKETBASE.install | default false }}
     values:
       - ./pocketbase/values.yaml
+    <<: *notify
   {{- end }}
+
+  {{- if .Values.CHROMADB.install | default false }}
+  - name: chromadb
+    namespace: {{ .Values.CHROMADB.Namespace }}
+    chart: ./chromadb
+    version: 0.2.0
+    installed: {{ .Values.CHROMADB.install | default false }}
+    values:
+      - ./chromadb/values.yaml.gotmpl
+    <<: *notify
+  {{- end }}
+
+#  {{- if .Values.CHROMADB.install | default false }}
+#  - name: chromadb-admin
+#    namespace: {{ .Values.CHROMADB.Namespace }}
+#    chart: ./chromadb-admin
+#    version: 0.1.0
+#    installed: {{ .Values.CHROMADB.install | default false }}
+#    values:
+#      - ./chromadb-admin/values.yaml
+#    <<: *notify
+#  {{- end }}
